@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Behavior Processor</title>
+    <!-- Load Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Use Inter font family -->
+    <style>
+        body {
+            font-family: "Inter", sans-serif;
+        }
+
+        /* * Print-specific styles for 72mm receipt tape.
+         * This will be activated when window.print() is called.
+        */
+        @media print {
+            /* This defines the page size for the printer */
+            @page {
+                size: 72mm auto; /* 72mm width, auto height for continuous feed */
+                margin: 5mm; /* 5mm margins on all sides */
+            }
+
+            body {
+                width: 62mm; /* Full width minus margins */
+                margin: 0;
+                padding: 0;
+                font-family: Arial, sans-serif; /* Sans-serif is clearer on receipts */
+                font-size: 10pt;
+                line-height: 1.3;
+            }
+            
+            /* Hide everything on the page by default */
+            body * {
+                display: none;
+                visibility: hidden;
+            }
+
+            /* ONLY show the result container and its contents */
+            #result-container, #result-container * {
+                display: block !important;
+                visibility: visible !important;
+            }
+            
+            /* Remove screen-only styles from the result container */
+            #result-container {
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                background-color: white !important;
+                box-shadow: none !important;
+            }
+
+            #target-category-heading {
+                font-size: 14pt !important;
+                font-weight: bold !important;
+                color: #000 !important;
+                margin-bottom: 10px !important;
+            }
+            
+            #strategies-subheading {
+                font-size: 12pt !important;
+                font-weight: bold !important;
+                color: #000 !important;
+                margin-top: 15px !important;
+                margin-bottom: 5px !important;
+            }
+
+            #strategy-list {
+                list-style-type: disc !important;
+                list-style-position: inside !important;
+                padding-left: 0 !important;
+                margin: 0 !important;
+            }
+
+            #student-initials-print {
+                font-size: 10pt !important;
+                margin-bottom: 10px !important;
+            }
+            #student-initials-print span.border-b-2 {
+                border-bottom: 1px solid #000 !important; /* Thinner line for print */
+                width: 150px !important; /* Make it a bit wider */
+            }
+
+            #checked-behaviors-subheading {
+                font-size: 12pt !important;
+                font-weight: bold !important;
+                color: #000 !important;
+                margin-top: 15px !important;
+                margin-bottom: 5px !important;
+            }
+
+            #checked-behaviors-list {
+                list-style-type: disc !important;
+                list-style-position: inside !important;
+                padding-left: 0 !important;
+                margin: 0 !important;
+            }
+            
+            #checked-behaviors-list li {
+                font-size: 10pt !important;
+                margin-bottom: 5px !important;
+            }
+
+            /* Hide the buttons in print view */
+            #analyze-btn, #print-btn, #behavior-form, #main-title {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-inter text-gray-800">
+
+    <div class="min-h-screen flex items-center justify-center p-4 sm:p-6">
+        <div class="bg-white rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-3xl">
+
+            <!-- Main Title -->
+            <h1 id="main-title" class="text-3xl font-bold text-gray-900 mb-6 text-center">
+                Student Behavior Processor
+            </h1>
+
+            <!-- Behavior Checklist Form -->
+            <form id="behavior-form" class="mb-6">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Observed Behaviors Checklist</h2>
+                <div id="checklist-container" class="max-h-96 overflow-y-auto pr-2 space-y-3 p-4 border border-gray-200 rounded-lg">
+                    <!-- Checkboxes will be dynamically inserted here by JavaScript -->
+                    <p class="text-gray-500">Loading checklist...</p>
+                </div>
+                
+                <!-- Analyze Button -->
+                <button type="button" id="analyze-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg py-3 px-4 rounded-lg shadow-md transition duration-300 mt-6">
+                    Analyze Behaviors
+                </button>
+            </form>
+
+            <!-- Result Container (Initially Hidden) -->
+            <div id="result-container" class="hidden mt-6 p-6 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                
+                <!-- Student Initials (for print) -->
+                <div id="student-initials-print" class="hidden mb-4">
+                    <span class="font-bold">Student Initials:</span> 
+                    <span class="border-b-2 border-black inline-block w-48">&nbsp;</span>
+                </div>
+
+                <!-- Checked Behaviors List -->
+                <h4 id="checked-behaviors-subheading" class="hidden text-xl font-semibold text-gray-700 mb-3">
+                    Observed Behaviors:
+                </h4>
+                <ul id="checked-behaviors-list" class="hidden list-disc list-inside space-y-2 text-lg text-gray-700 mb-4">
+                    <!-- Checked behaviors will go here -->
+                </ul>
+
+                <!-- Target Category Result -->
+                <h3 id="target-category-heading" class="text-2xl font-bold text-blue-800 mb-4">
+                    <!-- Result heading will go here -->
+                </h3>
+                
+                <h4 id="strategies-subheading" class="text-xl font-semibold text-gray-700 mb-3">
+                    Recommended Strategies:
+                </h4>
+                
+                <!-- Strategy List Result -->
+                <ul id="strategy-list" class="list-disc list-inside space-y-2 text-lg text-gray-700">
+                    <!-- Strategy list items will go here -->
+                </ul>
+
+                <!-- Print Button (Appears with results) -->
+                <button type="button" id="print-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold text-lg py-3 px-4 rounded-lg shadow-md transition duration-300 mt-8">
+                    Print to Receipt
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // <!-- 
+        // ========================================================================
+        // === USER: EDIT THIS DATA ===============================================
+        // ========================================================================
+        // 
+        // This is the main data structure for your application.
+        // Follow the format to add all your behaviors and strategies.
+        //
+        // - "Felt-Safety", "Self-Regulation", etc., are the main categories.
+        // - "behaviors": Add all behaviors that fall under this category.
+        // - "strategies": Add all strategies that should be printed for this category.
+        //
+        // ========================================================================
+        // -->
+        
+        const behaviorData = {
+            "Felt-Safety": {
+                behaviors: [
+                    "Student is jumpy or startles easily",
+                    "Appears anxious, worried, or 'on guard'",
+                    "Avoids eye contact or social interaction",
+                    "Physically withdraws (huddles, hides, under desk)",
+                    "Minimal verbal communication",
+                    "Hesitant to take risks or try new things",
+                    "Overly compliant or 'people-pleasing'"
+                ],
+                strategies: [
+                    "Provide a quiet, predictable, and safe space.",
+                    "Use a calm, reassuring, and predictable tone of voice.",
+                    "Clearly state expectations, routines, and transitions in advance.",
+                    "Offer choice and control whenever possible (e.g., 'Would you like to sit here or here?').",
+                    "Respect personal space and ask permission before physical contact.",
+                    "Validate their feelings: 'I see this is hard right now.'"
+                ]
+            },
+            "Self-Regulation": {
+                behaviors: [
+                    "Difficulty sitting still, constant movement",
+                    "Emotional outbursts (yelling, crying, anger)",
+                    "Shuts down, non-responsive, or puts head on desk",
+                    "Easily frustrated, gives up quickly",
+                    "Impulsive actions or comments",
+                    "Difficulty managing disappointment",
+                    "Overly silly or hyperactive"
+                ],
+                strategies: [
+                    "Teach and practice deep breathing or 'belly breaths'.",
+                    "Offer sensory tools (fidgets, weighted lap pad, stress ball).",
+                    "Use a 'feelings chart' to help identify and name emotions.",
+                    "Provide a 'calm-down corner' or designated break area.",
+                    "Co-regulate: 'I'm here with you. Let's take a deep breath together.'",
+                    "Break tasks into smaller, manageable steps."
+                ]
+            },
+            "Connection": {
+                behaviors: [
+                    "Difficulty making or keeping friends",
+                    "Seems isolated or withdrawn from peers",
+                    "Misinterprets social cues",
+                    "Seeks excessive attention (positive or negative)",
+                    "Appears lonely or sad",
+                    "Avoids group activities or cooperative play",
+                    "Speaks negatively about peers"
+                ],
+                strategies: [
+                    "Greet the student by name, every day.",
+                    "Find 1-on-1 time, even for 2 minutes, to talk about their interests.",
+                    "Use 'I notice...' statements: 'I notice you love drawing robots.'",
+                    "Implement a 'buddy system' or partner activities.",
+                    "Facilitate-entry into peer groups: 'Hey everyone, Ben has a cool idea about...'",
+                    "Practice social scenarios or role-playing."
+                ]
+            },
+            "Voice": {
+                behaviors: [
+                    "Rarely speaks in class or shares opinions",
+                    "Does not ask for help when needed",
+                    "Allows others to speak for them",
+                    "Goes along with the group, even when uncomfortable",
+                    "Difficulty making choices",
+                    "Appears passive or disengaged"
+                ],
+                strategies: [
+                    "Offer choices: 'Do you want to write or draw your answer?'",
+                    "Use 'wait time'—silently count to 10 after asking a question.",
+                    "Ask for their opinion on low-stakes topics (e.g., 'Which game should we play?').",
+                    "Provide sentence starters: 'I think...', 'I wonder...', 'I need...'",
+                    "Assign classroom jobs or leadership roles.",
+                    "Acknowledge and validate their contributions: 'That's a great point, thank you for sharing.'"
+                ]
+            },
+            "Self-Worth": {
+                behaviors: [
+                    "Makes negative self-statements ('I'm dumb', 'I can't do this')",
+                    "Gives up easily before trying",
+                    "Perfectionistic, high anxiety about mistakes",
+                    "Difficulty accepting praise or compliments",
+                    "Compares self negatively to others",
+                    "Self-sabotages tasks or relationships"
+                ],
+                strategies: [
+                    "Reframe mistakes as 'learning opportunities' or 'brain-growing moments'.",
+                    "Provide specific, effort-based praise: 'I saw how you kept working on that hard problem!'",
+                    "Display their work (with permission).",
+                    "Assign tasks you know they can be successful at to build mastery.",
+                    "Teach positive self-talk and help them catch negative thoughts.",
+                    "Remind them of past successes."
+                ]
+            }
+        };
+
+        // Wait for the DOM to be fully loaded before running script
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- 1. Get references to all our HTML elements ---
+            const checklistContainer = document.getElementById('checklist-container');
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const resultContainer = document.getElementById('result-container');
+            const targetCategoryHeading = document.getElementById('target-category-heading');
+            const strategyList = document.getElementById('strategy-list');
+            const strategiesSubheading = document.getElementById('strategies-subheading');
+            const printBtn = document.getElementById('print-btn');
+            // --- New element references ---
+            const studentInitialsPrint = document.getElementById('student-initials-print');
+            const checkedBehaviorsSubheading = document.getElementById('checked-behaviors-subheading');
+            const checkedBehaviorsList = document.getElementById('checked-behaviors-list');
+            
+            // --- 2. Populate the checklist from the behaviorData object ---
+            function populateChecklist() {
+                checklistContainer.innerHTML = ''; // Clear the "Loading..." text
+                let uniqueId = 0;
+                
+                // Loop over each category (Felt-Safety, etc.)
+                for (const category in behaviorData) {
+                    
+                    // Create a heading for the category
+                    const categoryHeader = document.createElement('div');
+                    categoryHeader.className = 'py-2';
+                    categoryHeader.innerHTML = `<h3 class="text-xl font-semibold text-gray-800">${category}</h3><hr class="mt-1">`;
+                    checklistContainer.appendChild(categoryHeader);
+
+                    // Loop over the behaviors in that category
+                    behaviorData[category].behaviors.forEach(behavior => {
+                        const behaviorId = `behavior-${uniqueId++}`;
+                        
+                        const item = document.createElement('div');
+                        item.className = 'flex items-center p-2 rounded-lg hover:bg-gray-50';
+                        
+                        item.innerHTML = `
+                            <input id="${behaviorId}" 
+                                   name="behaviors" 
+                                   type="checkbox" 
+                                   value="${behavior}" 
+                                   data-category="${category}"
+                                   class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <label for="${behaviorId}" class="ml-3 text-base text-gray-700">
+                                ${behavior}
+                            </label>
+                        `;
+                        checklistContainer.appendChild(item);
+                    });
+                }
+            }
+            
+            // --- 3. Define the function to analyze behaviors ---
+            function analyzeBehaviors() {
+                // Get all checkboxes that are currently checked
+                const checkedBoxes = document.querySelectorAll('#behavior-form input[type="checkbox"]:checked');
+                
+                if (checkedBoxes.length === 0) {
+                    displayResults(null); // Show a message if nothing is checked
+                    return;
+                }
+
+                // Create a 'scores' object to count checks per category
+                const scores = {
+                    "Felt-Safety": 0,
+                    "Self-Regulation": 0,
+                    "Connection": 0,
+                    "Voice": 0,
+                    "Self-Worth": 0
+                };
+
+                // Loop through checked boxes and add to the scores
+                checkedBoxes.forEach(box => {
+                    const category = box.dataset.category;
+                    if (scores.hasOwnProperty(category)) {
+                        scores[category]++;
+                    }
+                });
+
+                // Find the category with the highest score
+                let maxScore = -1;
+                let targetCategory = null;
+
+                for (const category in scores) {
+                    if (scores[category] > maxScore) {
+                        maxScore = scores[category];
+                        targetCategory = category;
+                    }
+                }
+                
+                // (Note: If there's a tie, this will pick the first one. This is fine for this app.)
+
+                // Display the results for the winning category
+                displayResults(targetCategory);
+            }
+
+            // --- 4. Define the function to display the results ---
+            function displayResults(category) {
+                if (category && behaviorData[category]) {
+                    // A valid category was found
+
+                    // --- 1. Populate Checked Behaviors (NEW) ---
+                    const checkedBoxes = document.querySelectorAll('#behavior-form input[type="checkbox"]:checked');
+                    checkedBehaviorsList.innerHTML = ''; // Clear old list
+                    
+                    checkedBoxes.forEach(box => {
+                        const li = document.createElement('li');
+                        li.textContent = box.value; // 'value' has the behavior text
+                        checkedBehaviorsList.appendChild(li);
+                    });
+                    
+                    // Show the new sections
+                    studentInitialsPrint.classList.remove('hidden');
+                    checkedBehaviorsSubheading.classList.remove('hidden');
+                    checkedBehaviorsList.classList.remove('hidden');
+
+                    // --- 2. Populate Target Area (EXISTING) ---
+                    targetCategoryHeading.textContent = `Target Focus Area: ${category}`;
+                    targetCategoryHeading.classList.remove('hidden');
+                    
+                    // --- 3. Populate Strategies (EXISTING) ---
+                    strategyList.innerHTML = '';
+                    behaviorData[category].strategies.forEach(strategy => {
+                        const li = document.createElement('li');
+                        li.textContent = strategy;
+                        strategyList.appendChild(li);
+                    });
+                    
+                    strategiesSubheading.classList.remove('hidden');
+                    strategyList.classList.remove('hidden');
+                    printBtn.classList.remove('hidden'); // Show the print button
+
+                } else {
+                    // No category found (or nothing checked)
+                    targetCategoryHeading.textContent = 'No behaviors selected. Please check one or more behaviors.';
+                    targetCategoryHeading.classList.remove('hidden');
+
+                    // --- Hide all other fields (NEW) ---
+                    studentInitialsPrint.classList.add('hidden');
+                    checkedBehaviorsSubheading.classList.add('hidden');
+                    checkedBehaviorsList.innerHTML = '';
+                    checkedBehaviorsList.classList.add('hidden');
+                    strategyList.innerHTML = ''; // Clear list
+                    strategiesSubheading.classList.add('hidden');
+                    strategyList.classList.add('hidden');
+                    printBtn.classList.add('hidden'); // Hide the print button
+                }
+
+                // Show the result container
+                resultContainer.classList.remove('hidden');
+            }
+            
+            // --- 5. Define the print function ---
+            function printResults() {
+                window.print();
+            }
+
+            // --- 6. Add event listeners to the buttons ---
+            analyzeBtn.addEventListener('click', analyzeBehaviors);
+            printBtn.addEventListener('click', printResults);
+            
+            // --- 7. Initial setup ---
+            populateChecklist();
+
+        });
+    </script>
+</body>
+</html>
